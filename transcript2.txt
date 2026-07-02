@@ -1,0 +1,3 @@
+Mencari transkrip untuk video: hP6MSkerx9A...
+Gagal mengambil transkrip: type object 'YouTubeTranscriptApi' has no attribute 'get_transcript'
+Pastikan video memiliki subtitle/CC (Closed Captions) yang aktif di YouTube.
