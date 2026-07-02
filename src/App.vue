@@ -1621,22 +1621,20 @@ const goToStep = (step) => {
     currentStep.value = step;
     return;
   }
-  // [SEMENTARA DI-COMMENT UNTUK TESTING]
-  // for (let i = 1; i < step; i++) {
-  //   if (!isStepFinished(i)) {
-  //     alert(`Mohon selesaikan video dan kuis/tugas di Modul ${i} terlebih dahulu.`);
-  //     return;
-  //   }
-  // }
+  for (let i = 1; i < step; i++) {
+    if (!isStepFinished(i)) {
+      alert(`Mohon selesaikan video dan kuis/tugas di Modul ${i} terlebih dahulu.`);
+      return;
+    }
+  }
   currentStep.value = step;
 };
 
 const nextStep = () => {
-  // [SEMENTARA DI-COMMENT UNTUK TESTING]
-  // if (!isStepFinished(currentStep.value)) {
-  //   alert(`Mohon selesaikan video dan kuis/tugas di modul ini terlebih dahulu.`);
-  //   return;
-  // }
+  if (!isStepFinished(currentStep.value)) {
+    alert(`Mohon selesaikan video dan kuis/tugas di modul ini terlebih dahulu.`);
+    return;
+  }
   if (currentStep.value < totalSteps) {
     currentStep.value += 1;
     return;
@@ -1858,7 +1856,7 @@ const getStepConfig = (stepId) => {
             </span>
             <span class="tab-arrow" aria-hidden="true">›</span>
           </button>
-          <button class="lesson-tab" :class="{ active: currentStep === 8 }" type="button" @click="currentStep = 8">
+          <button class="lesson-tab" :class="{ active: currentStep === 8 }" type="button" @click="goToStep(8)">
             <span class="tab-number">08</span>
             <span class="tab-copy">
               <strong>Financial Literacy</strong>
@@ -2461,12 +2459,12 @@ found = False
           </details>
         </section>
 
-        <div class="navigation">
-          <button class="nav-button secondary" type="button" :disabled="currentStep === 1" @click="currentStep--">
-            <span aria-hidden="true">←</span> Sebelumnya
+        <div class="nav-buttons">
+          <button class="nav-button secondary" type="button" :disabled="currentStep === 1" @click="prevStep()">
+            ← Modul Sebelumnya
           </button>
-          <button class="nav-button primary" type="button" :disabled="currentStep === 8" @click="currentStep++">
-            Lanjut ke video berikutnya <span aria-hidden="true">→</span>
+          <button class="nav-button primary" type="button" :disabled="currentStep === 8" @click="nextStep()">
+            Modul Berikutnya →
           </button>
         </div>
       </section>
