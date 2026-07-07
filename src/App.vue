@@ -1972,7 +1972,6 @@ const getCover = (key) => {
               :ref="(el) => { if (el) introRefs[1] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(1)"
               @play="onIntroPlay(1)"
               @pause="onIntroPause(1)"
@@ -2090,7 +2089,6 @@ const getCover = (key) => {
               :ref="(el) => { if (el) introRefs[2] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(2)"
               @play="onIntroPlay(2)"
               @pause="onIntroPause(2)"
@@ -2206,7 +2204,6 @@ const getCover = (key) => {
               :ref="(el) => { if (el) introRefs[3] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(3)"
               @play="onIntroPlay(3)"
               @pause="onIntroPause(3)"
@@ -2282,7 +2279,6 @@ const getCover = (key) => {
               :ref="(el) => { if (el) introRefs[4] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(4)"
               @play="onIntroPlay(4)"
               @pause="onIntroPause(4)"
@@ -2366,7 +2362,6 @@ found = False
               :ref="(el) => { if (el) introRefs[5] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(5)"
               @play="onIntroPlay(5)"
               @pause="onIntroPause(5)"
@@ -2484,7 +2479,6 @@ found = False
               :ref="(el) => { if (el) introRefs[6] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(6)"
               @play="onIntroPlay(6)"
               @pause="onIntroPause(6)"
@@ -2575,7 +2569,6 @@ found = False
               :ref="(el) => { if (el) introRefs[7] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(7)"
               @play="onIntroPlay(7)"
               @pause="onIntroPause(7)"
@@ -2638,7 +2631,6 @@ found = False
               :ref="(el) => { if (el) introRefs[8] = el; }"
               :src="introVideoSrc"
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
-              controls
               @ended="onIntroEnded(8)"
               @play="onIntroPlay(8)"
               @pause="onIntroPause(8)"
