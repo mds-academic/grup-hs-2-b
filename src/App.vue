@@ -1959,6 +1959,16 @@ const getCover = (key) => {
 
         <section class="step-panel" id="step-1" v-show="currentStep === 1">
           <div class="video-frame" :class="{ 'player-ready': playerStates[1]?.isReady }" data-video-step="1">
+            <video 
+              v-show="playerStates[1]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(1)"
+              @play="onIntroPlay(1)"
+              @pause="onIntroPause(1)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-1"></div>
             <div class="custom-thumbnail" v-show="!playerStates[1]?.hasStarted" @click="togglePlay(1)">
               <div class="thumb-card-blue-bg"></div>
@@ -2065,6 +2075,16 @@ const getCover = (key) => {
         </section>
         <section class="step-panel" id="step-2" v-show="currentStep === 2">
           <div class="video-frame" :class="{ 'player-ready': playerStates[2]?.isReady }" data-video-step="2">
+            <video 
+              v-show="playerStates[2]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(2)"
+              @play="onIntroPlay(2)"
+              @pause="onIntroPause(2)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-2"></div>
             <div class="custom-thumbnail" v-show="!playerStates[2]?.hasStarted" @click="togglePlay(2)">
               <div class="thumb-card-blue-bg"></div>
@@ -2169,6 +2189,16 @@ const getCover = (key) => {
 
         <section class="step-panel" id="step-3" v-show="currentStep === 3">
           <div class="video-frame" :class="{ 'player-ready': playerStates[3]?.isReady }" data-video-step="3">
+            <video 
+              v-show="playerStates[3]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(3)"
+              @play="onIntroPlay(3)"
+              @pause="onIntroPause(3)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-3"></div>
             <div class="custom-thumbnail" v-show="!playerStates[3]?.hasStarted" @click="togglePlay(3)">
               <div class="thumb-card-blue-bg"></div>
@@ -2233,6 +2263,16 @@ const getCover = (key) => {
 
         <section class="step-panel" id="step-4" v-show="currentStep === 4">
           <div class="video-frame" :class="{ 'player-ready': playerStates[4]?.isReady }" data-video-step="4">
+            <video 
+              v-show="playerStates[4]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(4)"
+              @play="onIntroPlay(4)"
+              @pause="onIntroPause(4)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-4"></div>
             <div class="custom-thumbnail" v-show="!playerStates[4]?.hasStarted" @click="togglePlay(4)">
               <div class="thumb-card-blue-bg"></div>
@@ -2305,6 +2345,16 @@ found = False
 
         <section class="step-panel" id="step-5" v-show="currentStep === 5">
           <div class="video-frame" :class="{ 'player-ready': playerStates[5]?.isReady }" data-video-step="5">
+            <video 
+              v-show="playerStates[5]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(5)"
+              @play="onIntroPlay(5)"
+              @pause="onIntroPause(5)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-5"></div>
             <div class="custom-thumbnail" v-show="!playerStates[5]?.hasStarted" @click="togglePlay(5)">
               <div class="thumb-card-blue-bg"></div>
@@ -2411,6 +2461,16 @@ found = False
 
         <section class="step-panel" id="step-6" v-show="currentStep === 6">
           <div class="video-frame" :class="{ 'player-ready': playerStates[6]?.isReady }" data-video-step="6">
+            <video 
+              v-show="playerStates[6]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(6)"
+              @play="onIntroPlay(6)"
+              @pause="onIntroPause(6)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-6"></div>
             <div class="custom-thumbnail" v-show="!playerStates[6]?.hasStarted" @click="togglePlay(6)">
               <div class="thumb-card-blue-bg"></div>
@@ -2490,6 +2550,16 @@ found = False
 
         <section class="step-panel" id="step-7" v-show="currentStep === 7">
           <div class="video-frame" :class="{ 'player-ready': playerStates[7]?.isReady }" data-video-step="7">
+            <video 
+              v-show="playerStates[7]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(7)"
+              @play="onIntroPlay(7)"
+              @pause="onIntroPause(7)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-7"></div>
             <div class="custom-thumbnail" v-show="!playerStates[7]?.hasStarted" @click="togglePlay(7)">
               <div class="thumb-card-blue-bg"></div>
@@ -2541,6 +2611,16 @@ found = False
 
         <section class="step-panel" id="step-8" v-show="currentStep === 8">
           <div class="video-frame" :class="{ 'player-ready': playerStates[8]?.isReady }" data-video-step="8">
+            <video 
+              v-show="playerStates[8]?.introPlaying"
+              :src="introVideoSrc"
+              class="intro-video"
+              controls
+              @ended="onIntroEnded(8)"
+              @play="onIntroPlay(8)"
+              @pause="onIntroPause(8)"
+              preload="auto"
+            ></video>
             <div id="youtube-player-8"></div>
             <div class="custom-thumbnail" v-show="!playerStates[8]?.hasStarted" @click="togglePlay(8)">
               <div class="thumb-card-blue-bg"></div>
