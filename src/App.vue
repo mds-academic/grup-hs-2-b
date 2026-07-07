@@ -1686,10 +1686,25 @@ const isStepFinished = (stepId) => {
 };
 
 const goToStep = (step) => {
+  if (step <= currentStep.value) {
+    currentStep.value = step;
+    return;
+  }
+  for (let i = 1; i < step; i++) {
+    if (!isStepFinished(i)) {
+      alert(`Mohon selesaikan video dan kuis/tugas di Modul ${i} terlebih dahulu.`);
+      return;
+    }
+  }
   currentStep.value = step;
 };
 
 const nextStep = () => {
+  if (!isStepFinished(currentStep.value)) {
+    alert(`Mohon selesaikan video dan kuis/tugas di modul ini terlebih dahulu.`);
+    return;
+  }
+
   if (currentStep.value < totalSteps) {
     currentStep.value += 1;
     return;
