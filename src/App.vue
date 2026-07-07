@@ -302,6 +302,11 @@ const playerStates = ref({
   8: { isPlaying: false, currentTime: 0, duration: 0, isMuted: false, isReady: false, isError: false, hasStarted: false, isBuffering: false },
 });
 
+const introRefs = ref({});
+const introPlayed = ref({});
+const introVideoSrc = import.meta.env.BASE_URL + 'intro.mp4';
+
+
 const isFullscreen = ref(false);
 const videoContainers = ref({});
 
@@ -425,6 +430,36 @@ const playVideo = (stepId) => {
   }
   player.playVideo();
 };
+
+const playIntroThenVideo = async (stepId) => {
+  const introEl = introRefs.value[stepId];
+  if (introEl && !introPlayed.value[stepId]) {
+    playerStates.value[stepId].introPlaying = true;
+    playerStates.value[stepId].hasStarted = true;
+    await nextTick();
+    introEl.currentTime = 0;
+    introEl.play().catch(e => {
+      console.error("Intro video play error:", e);
+      onIntroEnded(stepId);
+    });
+  } else {
+    onIntroEnded(stepId);
+  }
+};
+
+const onIntroEnded = (stepId) => {
+  introPlayed.value[stepId] = true;
+  playerStates.value[stepId].introPlaying = false;
+  
+  const p = players.value[stepId];
+  if (p && typeof p.playVideo === 'function') {
+    p.playVideo();
+  } else {
+    pendingPlay.value[stepId] = true;
+    initYouTubePlayer(stepId);
+  }
+};
+
 const togglePlay = (stepId) => {
   const player = players[stepId];
   if (!player || typeof player.getPlayerState !== "function") {
@@ -818,30 +853,56 @@ const registerTypedWrongAttempt = (question, answerValue = "") => {
 const handleStandardAnswer = (answer) => {
   const item = currentQuestion.value;
   if (!item) return;
+  if (quizState.value.choicesDisabled) return;
 
   const expectedAnswer = item.answer ?? item.correct;
   const normalizedAnswer = typeof answer === "string" ? answer.trim().toLowerCase() : answer;
   const normalizedExpected = typeof expectedAnswer === "string" ? expectedAnswer.trim().toLowerCase() : expectedAnswer;
   const isCorrect = normalizedAnswer === normalizedExpected;
+  
   quizState.value.selectedChoice = answer;
-  quizState.value.choicesDisabled = true;
-
+  
+  let attempts = 0;
   if (item.qid) {
     const attKey = `${item.qid}_Att`;
-    const ansKey = `${item.qid}_Ans`;
-    let att = (studentProgress.value[attKey] || 0) + 1;
-    studentProgress.value[attKey] = att;
-    if (isCorrect || att >= 3) {
-      studentProgress.value[ansKey] = isCorrect ? String(answer) : '-';
-    }
-    saveProgress(attKey, att);
-    saveProgress(ansKey, studentProgress.value[ansKey]);
+    attempts = (studentProgress.value[attKey] || 0) + 1;
+    studentProgress.value[attKey] = attempts;
+    saveProgress(attKey, attempts);
+  } else {
+    attempts = (failedAttempts.value[item.question] || 0) + 1;
+    failedAttempts.value[item.question] = attempts;
   }
 
-  quizState.value.quizFeedbackType = isCorrect ? 'correct' : 'wrong';
-  quizState.value.quizFeedback = (isCorrect ? "Tepat. " : "Belum tepat. ") + item.explanation;
-  
-  revealQuizNext();
+  if (isCorrect) {
+    quizState.value.choicesDisabled = true;
+    quizState.value.quizFeedbackType = 'correct';
+    quizState.value.quizFeedback = "Tepat. " + (item.explanation || "");
+    if (item.qid) {
+      const ansKey = `${item.qid}_Ans`;
+      studentProgress.value[ansKey] = String(answer);
+      saveProgress(ansKey, studentProgress.value[ansKey]);
+    }
+    revealQuizNext();
+  } else {
+    quizState.value.quizFeedbackType = 'wrong';
+    if (attempts >= 3) {
+      quizState.value.choicesDisabled = true;
+      quizState.value.quizFeedback = "Sudah 3 kali mencoba namun belum tepat. Tidak apa-apa, kamu boleh lanjut dulu!";
+      if (item.qid) {
+        const ansKey = `${item.qid}_Ans`;
+        studentProgress.value[ansKey] = '-';
+        saveProgress(ansKey, '-');
+      }
+      revealQuizNext("Lanjut dulu →");
+    } else {
+      quizState.value.quizFeedback = `Belum tepat. Coba cek lagi perlahan dan perhatikan petunjuk dari video. (Percobaan ${attempts}/3)`;
+      setTimeout(() => {
+        if (!quizState.value.choicesDisabled) {
+          quizState.value.selectedChoice = null;
+        }
+      }, 2000);
+    }
+  }
 };
 
 const submitInputAnswer = () => {
@@ -1085,7 +1146,7 @@ const exposeGlobalMethods = () => {
       feedback.innerHTML = `❌ <strong>SALAH!</strong><br>${explanation}`;
       feedback.style.backgroundColor = "#ff5c8a";
       feedback.style.color = "white";
-      registerFailedInputAttempt(btn, feedback);
+      revealQuizNext("Lanjut dulu →");
     }
   };
 
@@ -1649,6 +1710,20 @@ const nextStep = () => {
 const getStepConfig = (stepId) => {
   return courseData[stepId];
 };
+const cdnCovers = [
+  "https://cdn-web-2.ruangguru.com/landing-pages/assets/fec32e8d-d711-48a2-bd22-59581f0594c1.jpg",
+  "https://cdn-web-2.ruangguru.com/landing-pages/assets/2925ebc7-89c3-4010-a057-9807aacc6a32.jpg",
+  "https://cdn-web-2.ruangguru.com/landing-pages/assets/ec2aeaa6-e2e2-4e83-861e-223bfb9e1138.jpg",
+  "https://cdn-web-2.ruangguru.com/landing-pages/assets/47f3ef56-348b-4c3c-a767-aa4a40c5b833.jpg",
+  "https://cdn-web-2.ruangguru.com/landing-pages/assets/00c64b24-9e45-4a7e-8665-0817c04217c3.jpg",
+  "https://cdn-web-2.ruangguru.com/landing-pages/assets/c179c0a4-8817-4f1b-a9ef-cf6dcaa093c9.jpg",
+  "https://cdn-web-2.ruangguru.com/landing-pages/assets/98bcac2b-e88e-46d8-b1c1-deebd6a12c03.jpg"
+];
+
+const getCover = (key) => {
+  const index = (Number(key) - 1) % cdnCovers.length;
+  return cdnCovers[index];
+};
 </script>
 
 <template>
@@ -1790,10 +1865,10 @@ const getStepConfig = (stepId) => {
               <option :value="1">01 Optimasi & Function</option>
               <option :value="2">02 Optimasi Loop & Step Count</option>
               <option :value="3">03 Optimasi Program Python</option>
-              <option :value="4">04 Checkpoint Project</option>
+              <option :value="4">04 Mini Project</option>
               <option :value="5">05 Functions in Python</option>
               <option :value="6">06 Modular Design in Python</option>
-              <option :value="7">07 Checkpoint : Mini Project</option>
+              <option :value="7">07 Mini Project</option>
               <option :value="8">08 Financial Literacy</option>
             </select>
           </div>
@@ -1827,7 +1902,7 @@ const getStepConfig = (stepId) => {
           <button class="lesson-tab" :class="{ active: currentStep === 4 }" type="button" @click="goToStep(4)">
             <span class="tab-number">04</span>
             <span class="tab-copy">
-              <strong>Checkpoint Project</strong>
+              <strong>Mini Project</strong>
               <span>Tugas akhir</span>
             </span>
             <span class="tab-arrow" aria-hidden="true">›</span>
@@ -1886,7 +1961,18 @@ const getStepConfig = (stepId) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[1]?.isReady }" data-video-step="1">
             <div id="youtube-player-1"></div>
             <div class="custom-thumbnail" v-show="!playerStates[1]?.hasStarted" @click="togglePlay(1)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Checkpoint+01%5CnVideo+Pembelajaran" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(1).kicker">{{ getStepConfig(1).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(1).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[1]?.isPlaying && !playerStates[1]?.isBuffering && (playerStates[1]?.isReady || !playerStates[1]?.hasStarted)" @click="togglePlay(1)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[1]?.isBuffering || (playerStates[1]?.hasStarted && !playerStates[1]?.isReady)">
@@ -1981,7 +2067,18 @@ const getStepConfig = (stepId) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[2]?.isReady }" data-video-step="2">
             <div id="youtube-player-2"></div>
             <div class="custom-thumbnail" v-show="!playerStates[2]?.hasStarted" @click="togglePlay(2)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Checkpoint+02%5CnOptimasi+Loop" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(2).kicker">{{ getStepConfig(2).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(2).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[2]?.isPlaying && !playerStates[2]?.isBuffering && (playerStates[2]?.isReady || !playerStates[2]?.hasStarted)" @click="togglePlay(2)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[2]?.isBuffering || (playerStates[2]?.hasStarted && !playerStates[2]?.isReady)">
@@ -2074,7 +2171,18 @@ const getStepConfig = (stepId) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[3]?.isReady }" data-video-step="3">
             <div id="youtube-player-3"></div>
             <div class="custom-thumbnail" v-show="!playerStates[3]?.hasStarted" @click="togglePlay(3)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Optimasi+Program+Python" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(3).kicker">{{ getStepConfig(3).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(3).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[3]?.isPlaying && !playerStates[3]?.isBuffering && (playerStates[3]?.isReady || !playerStates[3]?.hasStarted)" @click="togglePlay(3)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[3]?.isBuffering || (playerStates[3]?.hasStarted && !playerStates[3]?.isReady)">
@@ -2127,7 +2235,18 @@ const getStepConfig = (stepId) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[4]?.isReady }" data-video-step="4">
             <div id="youtube-player-4"></div>
             <div class="custom-thumbnail" v-show="!playerStates[4]?.hasStarted" @click="togglePlay(4)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Checkpoint+04%5CnMini+Project" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(4).kicker">{{ getStepConfig(4).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(4).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[4]?.isPlaying && !playerStates[4]?.isBuffering && (playerStates[4]?.isReady || !playerStates[4]?.hasStarted)" @click="togglePlay(4)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[4]?.isBuffering || (playerStates[4]?.hasStarted && !playerStates[4]?.isReady)">
@@ -2188,7 +2307,18 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[5]?.isReady }" data-video-step="5">
             <div id="youtube-player-5"></div>
             <div class="custom-thumbnail" v-show="!playerStates[5]?.hasStarted" @click="togglePlay(5)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Materi+03%5CnFunctions+in+Python" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(5).kicker">{{ getStepConfig(5).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(5).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[5]?.isPlaying && !playerStates[5]?.isBuffering && (playerStates[5]?.isReady || !playerStates[5]?.hasStarted)" @click="togglePlay(5)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[5]?.isBuffering || (playerStates[5]?.hasStarted && !playerStates[5]?.isReady)">
@@ -2283,7 +2413,18 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[6]?.isReady }" data-video-step="6">
             <div id="youtube-player-6"></div>
             <div class="custom-thumbnail" v-show="!playerStates[6]?.hasStarted" @click="togglePlay(6)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Materi+04%5CnModular+Design" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(6).kicker">{{ getStepConfig(6).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(6).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[6]?.isPlaying && !playerStates[6]?.isBuffering && (playerStates[6]?.isReady || !playerStates[6]?.hasStarted)" @click="togglePlay(6)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[6]?.isBuffering || (playerStates[6]?.hasStarted && !playerStates[6]?.isReady)">
@@ -2351,7 +2492,18 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[7]?.isReady }" data-video-step="7">
             <div id="youtube-player-7"></div>
             <div class="custom-thumbnail" v-show="!playerStates[7]?.hasStarted" @click="togglePlay(7)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Checkpoint+05%5CnMini+Project" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(7).kicker">{{ getStepConfig(7).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(7).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[7]?.isPlaying && !playerStates[7]?.isBuffering && (playerStates[7]?.isReady || !playerStates[7]?.hasStarted)" @click="togglePlay(7)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[7]?.isBuffering || (playerStates[7]?.hasStarted && !playerStates[7]?.isReady)">
@@ -2391,7 +2543,18 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[8]?.isReady }" data-video-step="8">
             <div id="youtube-player-8"></div>
             <div class="custom-thumbnail" v-show="!playerStates[8]?.hasStarted" @click="togglePlay(8)">
-              <img src="https://placehold.co/1280x720/1a1a1a/ffe600.png?text=Financial+Literacy" alt="Thumbnail" />
+              <div class="thumb-card-blue-bg"></div>
+              <div class="thumb-card">
+                <div class="thumb-kicker" v-if="getStepConfig(8).kicker">{{ getStepConfig(8).kicker }}</div>
+                <div class="thumb-title">{{ getStepConfig(8).title }}</div>
+                <svg class="thumb-decoration" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 50 L50 10 L90 50 L50 90 Z" fill="#ffe600" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M10 60 L50 100 L90 60" fill="none" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round"/>
+                  <path d="M50 100 L50 90" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M10 60 L10 50" stroke="#1a1a1a" stroke-width="4"/>
+                  <path d="M90 60 L90 50" stroke="#1a1a1a" stroke-width="4"/>
+                </svg>
+              </div>
             </div>
             <button class="video-center-play" type="button" v-show="!playerStates[8]?.isPlaying && !playerStates[8]?.isBuffering && (playerStates[8]?.isReady || !playerStates[8]?.hasStarted)" @click="togglePlay(8)">▶</button>
             <div class="video-loading-overlay" v-show="playerStates[8]?.isBuffering || (playerStates[8]?.hasStarted && !playerStates[8]?.isReady)">

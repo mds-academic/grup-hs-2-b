@@ -379,7 +379,7 @@ ____(____)
   },
   7: {
     kicker: "Checkpoint 05",
-    title: "Checkpoint : Mini Project",
+    title: "Mini Project",
     duration: "Tugas Akhir",
     videoId: "hP6MSkerx9A",
     startSeconds: 626,
