@@ -128,7 +128,6 @@ const markQuestionFailed = (qid) => {
   studentProgress.value[`${qid}_Failed`] = true;
   localStorage.setItem('mds_student_progress', JSON.stringify(studentProgress.value));
   syncToSheets();
-  revealQuizNext();
 };
 
 const syncToSheets = async () => {
@@ -860,7 +859,7 @@ const registerFailedInputAttempt = (btn, feedbackEl) => {
   if (attempts >= 3) {
     attemptStatus.classList.add("limit-reached");
     markQuestionFailed(currentQuestion.value?.qid);
-    attemptStatus.innerHTML = "<strong>Sudah 3 kali mencoba.</strong><br>Kamu boleh lanjut dulu. Perhatikan lagi videonya sebelum masuk ke bagian berikutnya, ya.";
+    attemptStatus.innerHTML = "<strong>Sudah 3 kali salah.</strong><br>Nilai checkpoint ini menjadi 0 dan modul berikutnya tetap terkunci.";
     btn.disabled = true;
     btn.style.opacity = "0.55";
   } else {
@@ -929,7 +928,7 @@ const handleStandardAnswer = (answer) => {
       if (item.qid) {
         markQuestionFailed(item.qid);
       }
-      quizState.value.quizFeedback = "Sudah 3 kali mencoba. Kamu boleh lanjut dulu, tapi perhatikan lagi videonya sebelum masuk ke bagian berikutnya.";
+      quizState.value.quizFeedback = "Sudah 3 kali salah. Nilai checkpoint ini menjadi 0 dan modul berikutnya tetap terkunci.";
     } else {
       quizState.value.quizFeedback = `Belum tepat. Coba cek lagi perlahan dan perhatikan petunjuk dari video. (Percobaan ${attempts}/3)`;
       setTimeout(() => {
@@ -1187,7 +1186,7 @@ const exposeGlobalMethods = () => {
       const attempts = qid ? studentProgress.value[`${qid}_Att`] || 1 : 1;
       if (attempts >= 3) {
         markQuestionFailed(qid);
-        feedback.innerHTML += `<br><strong>Sudah 3 kali mencoba.</strong> Kamu boleh lanjut dulu. Perhatikan lagi videonya sebelum masuk ke bagian berikutnya, ya.`;
+        feedback.innerHTML += `<br><strong>Sudah 3 kali salah.</strong> Nilai checkpoint ini menjadi 0 dan modul berikutnya tetap terkunci.`;
       } else {
         buttons.forEach(b => {
           b.disabled = false;
@@ -1697,17 +1696,11 @@ const openQuizButtonHandler = () => {
   openQuiz(courseData[2].quizzes[0].questions, false);
 };
 
-const prevStep = () => {
-  if (currentStep.value > 1) {
-    currentStep.value -= 1;
-  }
-};
-
 const isStepFinished = (stepId) => {
   if (courseData[stepId]?.videoId) {
     if (!videoWatchedStatus.value[stepId]) return false;
   }
-  
+
   const stepQuizzes = courseData[stepId]?.quizzes;
   if (stepQuizzes && stepQuizzes.length > 0) {
     for (let quiz of stepQuizzes) {
@@ -1717,21 +1710,15 @@ const isStepFinished = (stepId) => {
         if (
           ans === undefined ||
           ans === null ||
-          ans === ''
-        ) {
-          return false;
-        }
+          ans === '' ||
+          ans === '-' ||
+          ans === '0' ||
+          studentProgress.value[`${q.qid}_Failed`] === true
+        ) return false;
       }
     }
   }
-  
-  if (stepId === 4) {
-    if (!studentProgress.value['Final_Project_Code']) return false;
-  }
-  if (stepId === 7) {
-    if (!studentProgress.value['Project7_Code']) return false;
-  }
-  
+
   return true;
 };
 
@@ -1742,11 +1729,7 @@ const goToStep = (step) => {
   }
   for (let i = 1; i < step; i++) {
     if (!isStepFinished(i)) {
-      showDashboardNotice({
-        type: 'warning',
-        title: 'Modul belum selesai',
-        message: `Selesaikan video dan kuis/tugas di Modul ${i} terlebih dahulu sebelum membuka modul berikutnya.`
-      });
+      alert(`Mohon selesaikan video dan kuis/tugas di Modul ${i} terlebih dahulu.`);
       return;
     }
   }
@@ -1759,25 +1742,20 @@ const handleStepSelect = (event) => {
   event.target.value = String(currentStep.value);
 };
 
+const prevStep = () => {
+  if (currentStep.value > 1) {
+    currentStep.value--;
+  }
+};
+
 const nextStep = () => {
   if (!isStepFinished(currentStep.value)) {
-    showDashboardNotice({
-      type: 'warning',
-      title: 'Modul belum selesai',
-      message: 'Selesaikan video dan kuis/tugas di modul ini terlebih dahulu sebelum lanjut.'
-    });
+    alert(`Mohon selesaikan video dan kuis/tugas di modul ini terlebih dahulu.`);
     return;
   }
-
-  if (currentStep.value < totalSteps) {
-    currentStep.value += 1;
-    return;
+  if (currentStep.value < Object.keys(courseData).length) {
+    currentStep.value++;
   }
-
-  showCompletionToast.value = true;
-  setTimeout(() => {
-    showCompletionToast.value = false;
-  }, 3800);
 };
 
 const getStepConfig = (stepId) => {
