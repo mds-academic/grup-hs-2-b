@@ -99,6 +99,15 @@ const saveProgress = (key, value) => {
   syncToSheets();
 };
 
+const markQuestionFailed = (qid) => {
+  if (!qid) return;
+  studentProgress.value[`${qid}_Ans`] = '0';
+  studentProgress.value[`${qid}_Score`] = 0;
+  studentProgress.value[`${qid}_Failed`] = true;
+  localStorage.setItem('mds_student_progress', JSON.stringify(studentProgress.value));
+  syncToSheets();
+};
+
 const syncToSheets = async () => {
   if (!isLoggedIn.value) return;
   const payload = {
@@ -827,10 +836,10 @@ const registerFailedInputAttempt = (btn, feedbackEl) => {
 
   if (attempts >= 3) {
     attemptStatus.classList.add("limit-reached");
-    attemptStatus.innerHTML = "<strong>Belum tepat.</strong><br>Untuk sesi ini, nilai bagian ini dikosongkan dulu. Silakan lanjut, tapi tonton bagian videonya lebih teliti sebelum mengerjakan sesi berikutnya.";
+    markQuestionFailed(currentQuestion.value?.qid);
+    attemptStatus.innerHTML = "<strong>Sudah 3 kali mencoba.</strong><br>Nilai checkpoint ini menjadi 0 dan modul berikutnya tetap terkunci. Minta bantuan mentor sebelum lanjut.";
     btn.disabled = true;
     btn.style.opacity = "0.55";
-    revealQuizNext("Lanjut dulu →");
   } else {
     attemptStatus.textContent = "Jawabanmu belum tepat. Coba cek lagi perlahan dan perhatikan petunjuk dari video.";
   }
@@ -845,12 +854,11 @@ const registerTypedWrongAttempt = (question, answerValue = "") => {
 
   if (attempts >= 3) {
     if (question?.qid) {
-      saveProgress(`${question.qid}_Ans`, "-");
+      markQuestionFailed(question.qid);
     }
     quizState.value.choicesDisabled = true;
     quizState.value.quizFeedbackType = "wrong";
-    quizState.value.quizFeedback = "<strong>Belum tepat.</strong><br>Untuk sesi ini, nilai bagian ini dikosongkan dulu. Silakan lanjut, tapi tonton bagian videonya lebih teliti sebelum mengerjakan sesi berikutnya.";
-    revealQuizNext("Lanjut dulu →");
+    quizState.value.quizFeedback = "<strong>Sudah 3 kali mencoba.</strong><br>Nilai checkpoint ini menjadi 0 dan modul berikutnya tetap terkunci. Minta bantuan mentor sebelum lanjut.";
     return true;
   }
 
@@ -895,13 +903,10 @@ const handleStandardAnswer = (answer) => {
     quizState.value.quizFeedbackType = 'wrong';
     if (attempts >= 3) {
       quizState.value.choicesDisabled = true;
-      quizState.value.quizFeedback = "Sudah 3 kali mencoba namun belum tepat. Tidak apa-apa, kamu boleh lanjut dulu!";
       if (item.qid) {
-        const ansKey = `${item.qid}_Ans`;
-        studentProgress.value[ansKey] = '-';
-        saveProgress(ansKey, '-');
+        markQuestionFailed(item.qid);
       }
-      revealQuizNext("Lanjut dulu →");
+      quizState.value.quizFeedback = "Sudah 3 kali salah. Nilai checkpoint ini menjadi 0 dan modul berikutnya tetap terkunci.";
     } else {
       quizState.value.quizFeedback = `Belum tepat. Coba cek lagi perlahan dan perhatikan petunjuk dari video. (Percobaan ${attempts}/3)`;
       setTimeout(() => {
@@ -1119,8 +1124,10 @@ const exposeGlobalMethods = () => {
     let att = (studentProgress.value[attKey] || 0) + 1;
     studentProgress.value[attKey] = att;
     
-    if (isCorrect || att >= 3) {
-      studentProgress.value[ansKey] = isCorrect ? answerStr : '-';
+    if (isCorrect) {
+      studentProgress.value[ansKey] = answerStr;
+    } else if (att >= 3) {
+      markQuestionFailed(qid);
     }
     saveProgress(attKey, att); 
   };
@@ -1154,7 +1161,16 @@ const exposeGlobalMethods = () => {
       feedback.innerHTML = `❌ <strong>SALAH!</strong><br>${explanation}`;
       feedback.style.backgroundColor = "#ff5c8a";
       feedback.style.color = "white";
-      revealQuizNext("Lanjut dulu →");
+      const attempts = qid ? studentProgress.value[`${qid}_Att`] || 1 : 1;
+      if (attempts >= 3) {
+        markQuestionFailed(qid);
+        feedback.innerHTML += `<br><strong>Sudah 3 kali mencoba.</strong> Nilai checkpoint ini menjadi 0 dan modul berikutnya tetap terkunci.`;
+      } else {
+        buttons.forEach(b => {
+          b.disabled = false;
+          b.style.opacity = '1';
+        });
+      }
     }
   };
 
@@ -1667,8 +1683,14 @@ const isStepFinished = (stepId) => {
       for (let q of quiz.questions) {
         if (!q.qid) continue;
         const ans = studentProgress.value[`${q.qid}_Ans`];
-        const att = studentProgress.value[`${q.qid}_Att`];
-        if (!ans && !att) {
+        if (
+          ans === undefined ||
+          ans === null ||
+          ans === '' ||
+          ans === '-' ||
+          ans === '0' ||
+          studentProgress.value[`${q.qid}_Failed`] === true
+        ) {
           return false;
         }
       }
@@ -1697,6 +1719,12 @@ const goToStep = (step) => {
     }
   }
   currentStep.value = step;
+};
+
+const handleStepSelect = (event) => {
+  const requestedStep = Number(event.target.value);
+  goToStep(requestedStep);
+  event.target.value = String(currentStep.value);
 };
 
 const nextStep = () => {
@@ -1870,7 +1898,7 @@ const getCover = (key) => {
         <nav class="mobile-nav">
           <label for="mobile-lesson-select">Pilih Modul</label>
           <div class="select-wrapper">
-            <select id="mobile-lesson-select" v-model="currentStep">
+            <select id="mobile-lesson-select" :value="currentStep" @change="handleStepSelect">
               <option :value="1">01 Optimasi & Function</option>
               <option :value="2">02 Optimasi Loop & Step Count</option>
               <option :value="3">03 Optimasi Program Python</option>
