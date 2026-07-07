@@ -461,6 +461,10 @@ const onIntroEnded = (stepId) => {
 };
 
 const togglePlay = (stepId) => {
+  if (playerStates.value[stepId] && !introPlayed.value[stepId]) {
+    playIntroThenVideo(stepId);
+    return;
+  }
   const player = players[stepId];
   if (!player || typeof player.getPlayerState !== "function") {
     initializeYouTubePlayer(stepId);
@@ -1961,12 +1965,14 @@ const getCover = (key) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[1]?.isReady }" data-video-step="1">
             <video 
               v-show="playerStates[1]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[1] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(1)"
               @play="onIntroPlay(1)"
               @pause="onIntroPause(1)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-1"></div>
@@ -2077,12 +2083,14 @@ const getCover = (key) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[2]?.isReady }" data-video-step="2">
             <video 
               v-show="playerStates[2]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[2] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(2)"
               @play="onIntroPlay(2)"
               @pause="onIntroPause(2)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-2"></div>
@@ -2191,12 +2199,14 @@ const getCover = (key) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[3]?.isReady }" data-video-step="3">
             <video 
               v-show="playerStates[3]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[3] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(3)"
               @play="onIntroPlay(3)"
               @pause="onIntroPause(3)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-3"></div>
@@ -2265,12 +2275,14 @@ const getCover = (key) => {
           <div class="video-frame" :class="{ 'player-ready': playerStates[4]?.isReady }" data-video-step="4">
             <video 
               v-show="playerStates[4]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[4] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(4)"
               @play="onIntroPlay(4)"
               @pause="onIntroPause(4)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-4"></div>
@@ -2347,12 +2359,14 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[5]?.isReady }" data-video-step="5">
             <video 
               v-show="playerStates[5]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[5] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(5)"
               @play="onIntroPlay(5)"
               @pause="onIntroPause(5)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-5"></div>
@@ -2463,12 +2477,14 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[6]?.isReady }" data-video-step="6">
             <video 
               v-show="playerStates[6]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[6] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(6)"
               @play="onIntroPlay(6)"
               @pause="onIntroPause(6)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-6"></div>
@@ -2552,12 +2568,14 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[7]?.isReady }" data-video-step="7">
             <video 
               v-show="playerStates[7]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[7] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(7)"
               @play="onIntroPlay(7)"
               @pause="onIntroPause(7)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-7"></div>
@@ -2613,12 +2631,14 @@ found = False
           <div class="video-frame" :class="{ 'player-ready': playerStates[8]?.isReady }" data-video-step="8">
             <video 
               v-show="playerStates[8]?.introPlaying"
+              :ref="(el) => { if (el) introRefs[8] = el; }"
               :src="introVideoSrc"
-              class="intro-video"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; background: black;"
               controls
               @ended="onIntroEnded(8)"
               @play="onIntroPlay(8)"
               @pause="onIntroPause(8)"
+              playsinline
               preload="auto"
             ></video>
             <div id="youtube-player-8"></div>
