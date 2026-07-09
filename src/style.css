@@ -440,13 +440,70 @@
       inset: 0;
       z-index: 2;
       cursor: pointer;
-      background: #000;
+      background-color: #f0f0f0;
+      background-image: radial-gradient(#d4d4d8 2px, transparent 2px);
+      background-size: 24px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }
 
-    .custom-thumbnail img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    .thumb-card-blue-bg {
+      position: absolute;
+      width: 85%;
+      height: 75%;
+      background: #00c3ff;
+      border-radius: 24px;
+      border: 4px solid #1a1a1a;
+      transform: translate(12px, 12px);
+    }
+
+    .thumb-card {
+      position: relative;
+      width: 85%;
+      height: 75%;
+      background: #ffffff;
+      border-radius: 24px;
+      border: 4px solid #1a1a1a;
+      box-shadow: 8px 8px 0px #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      padding: 40px;
+      box-sizing: border-box;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .thumb-kicker {
+      align-self: flex-start;
+      background: #ffe600;
+      border: 3px solid #1a1a1a;
+      border-radius: 16px;
+      padding: 8px 24px;
+      font-weight: 900;
+      font-size: 20px;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      box-shadow: 3px 3px 0px #1a1a1a;
+      margin-bottom: 24px;
+    }
+
+    .thumb-title {
+      font-size: 42px;
+      font-weight: 900;
+      color: #1a1a1a;
+      line-height: 1.2;
+      max-width: 75%;
+    }
+
+    .thumb-decoration {
+      position: absolute;
+      right: -20px;
+      bottom: -20px;
+      width: 250px;
+      height: 250px;
+      opacity: 0.9;
     }
 
     .video-center-play {
