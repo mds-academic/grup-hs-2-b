@@ -442,6 +442,9 @@ const updateVideoControls = (stepId) => {
   playerStates.value[stepId].progress = duration > 0 ? (currentTime / duration * 100) : 0;
   playerStates.value[stepId].durationFormatted = formatVideoTime(duration);
   playerStates.value[stepId].currentTimeFormatted = formatVideoTime(currentTime);
+  if (playerStates.value[stepId].progress >= 95) {
+    videoWatchedStatus.value[stepId] = true;
+  }
 };
 
 // Video actions
