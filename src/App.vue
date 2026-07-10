@@ -104,6 +104,36 @@ let schoolSearchRequestId = 0;
 const studentData = ref({ name: '', school: '', email: '' });
 const studentProgress = ref({}); // Menyimpan progress jawaban & attempts
 
+const buildSheetsPayload = () => ({
+  Students_Email: studentData.value.email,
+  Students_Name: studentData.value.name,
+  Students_School: studentData.value.school,
+  Group: 'ghs2b',
+  ...studentProgress.value
+});
+
+const getQuizDebugInfo = (quizConfig = quizState.value.activeQuizConfig, stepId = quizState.value.activeQuizStep || currentStep.value) => {
+  const quizzes = courseData[stepId]?.quizzes || [];
+  const quizIndex = quizConfig ? quizzes.indexOf(quizConfig) + 1 : null;
+  return {
+    tab: Number(stepId),
+    quizKe: quizIndex && quizIndex > 0 ? quizIndex : null,
+    totalQuizDiTab: quizzes.length,
+    waktuVideoDetik: quizConfig?.time ?? null
+  };
+};
+
+const debugLearningEvent = (message, details = {}, payloadOverride = null) => {
+  const payload = payloadOverride || buildSheetsPayload();
+  console.groupCollapsed(`[MDS Debug] ${message}`);
+  console.log('Detail event:', {
+    waktu: new Date().toISOString(),
+    ...details
+  });
+  console.log('Payload yang akan dikirim ke Sheets:', payload);
+  console.groupEnd();
+};
+
 // Tambahkan auto-ID ke semua soal agar gampang ditrack
 Object.keys(courseData).forEach(stepId => {
   let qCounter = 1;
@@ -132,19 +162,31 @@ const markQuestionFailed = (qid) => {
 
 const syncToSheets = async () => {
   if (!isLoggedIn.value) return;
-  const payload = {
-    Students_Email: studentData.value.email,
-    Students_Name: studentData.value.name,
-    Students_School: studentData.value.school,
-    Group: 'ghs2b',
-    ...studentProgress.value
-  };
+  const payload = buildSheetsPayload();
+  debugLearningEvent('Mengirim progress ke Sheets', { status: 'sync_mulai' }, payload);
   try {
-    await fetch(APP_SCRIPT_URL, {
+    const res = await fetch(APP_SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify(payload),
       headers: { 'Content-Type': 'text/plain;charset=utf-8' } // text/plain untuk bypass CORS AppScript
     });
+    const responseText = await res.text();
+    let responseData = null;
+    try {
+      responseData = responseText ? JSON.parse(responseText) : null;
+    } catch (parseErr) {
+      responseData = responseText;
+    }
+
+    if (!res.ok || responseData?.success === false) {
+      console.error('[MDS Debug] Sync ke Sheets gagal atau ditolak.', {
+        httpStatus: res.status,
+        response: responseData
+      });
+      return;
+    }
+
+    console.log('[MDS Debug] Sync ke Sheets berhasil disimpan.', responseData);
   } catch(err) {
     console.error("Sync error", err);
   }
@@ -177,6 +219,7 @@ const handleLogin = async () => {
       isLoggedIn.value = true;
       loginEmailAttempts.value = 0;
       localStorage.setItem('mds_student_login', JSON.stringify(studentData.value));
+      debugLearningEvent('Login berhasil', { status: 'login_berhasil' });
     } else {
       loginEmailAttempts.value = nextAttempt;
       loginErrorTitle.value = data.needsRfo ? 'Perlu bantuan RFO' : 'Email belum cocok';
@@ -442,7 +485,7 @@ const updateVideoControls = (stepId) => {
   playerStates.value[stepId].progress = duration > 0 ? (currentTime / duration * 100) : 0;
   playerStates.value[stepId].durationFormatted = formatVideoTime(duration);
   playerStates.value[stepId].currentTimeFormatted = formatVideoTime(currentTime);
-  if (playerStates.value[stepId].progress >= 95) {
+  if (playerStates.value[stepId].progress >= 90) {
     videoWatchedStatus.value[stepId] = true;
   }
 };
@@ -608,16 +651,29 @@ const initializeYouTubePlayer = (stepId) => {
 const handlePlayerStateChange = (stepId, event) => {
   const isPlaying = event.data === window.YT.PlayerState.PLAYING;
   const isBuffering = event.data === window.YT.PlayerState.BUFFERING;
+  const wasPlaying = playerStates.value[stepId].isPlaying;
   playerStates.value[stepId].isBuffering = isBuffering;
   playerStates.value[stepId].isPlaying = isPlaying;
 
   if (isPlaying) {
     playerStates.value[stepId].hasStarted = true;
     enforceVideoStartBoundary(stepId);
+    if (!wasPlaying) {
+      debugLearningEvent(`Video ${stepId} sedang ditonton`, {
+        status: 'video_sedang_ditonton',
+        tab: Number(stepId),
+        videoId: courseData[stepId]?.videoId || null
+      });
+    }
   }
 
   if (event.data === window.YT.PlayerState.ENDED) {
     videoWatchedStatus.value[stepId] = true;
+    debugLearningEvent(`Video ${stepId} selesai ditonton`, {
+      status: 'video_selesai',
+      tab: Number(stepId),
+      tabBerikutnya: Number(stepId) < totalSteps ? Number(stepId) + 1 : null
+    });
     if (checkVideoQuizzes(stepId)) return;
     restartVideoFromBoundary(stepId);
     return;
@@ -718,12 +774,35 @@ const openQuiz = (questionsArray, shouldResume = false, seekTime = null, quizCon
   quizState.value.isNextBtnVisible = false;
   quizState.value.nextBtnText = 'Soal berikutnya →';
 
+  const quizInfo = getQuizDebugInfo(quizConfig, stepId);
+  debugLearningEvent(`Pop up quiz ${quizInfo.quizKe || '-'} dari ${quizInfo.totalQuizDiTab} di tab ${stepId} sedang dikerjakan`, {
+    status: 'quiz_sedang_dikerjakan',
+    ...quizInfo,
+    jumlahSoal: questionsArray.length
+  });
+
   nextTick(() => {
     renderQuestion();
   });
 };
 
 const closeQuiz = (resumeVideo = false, seekTime = null) => {
+  const stepId = currentStep.value;
+  const player = players[stepId];
+  if (player && typeof player.getCurrentTime === 'function') {
+    const currentTime = player.getCurrentTime();
+    const stepConfig = courseData[stepId];
+    if (stepConfig && stepConfig.quizzes) {
+      const nextQuiz = stepConfig.quizzes.find(q => !q.shown && currentTime >= q.time);
+      if (nextQuiz) {
+        nextQuiz.shown = true;
+        const shouldResume = nextQuiz.resume !== undefined ? nextQuiz.resume : true;
+        openQuiz(nextQuiz.questions, shouldResume, nextQuiz.resumeTime, nextQuiz, stepId);
+        return;
+      }
+    }
+  }
+
   sheet.sequence.play({ direction: 'reverse', range: [0, 0.4] }).then(() => {
     quizState.value.isOpen = false;
   });
@@ -825,6 +904,9 @@ const attachCustomHtmlListeners = () => {
 };
 
 const renderQuestion = () => {
+  if (currentQuestion.value && (currentQuestion.value.continueOnly || currentQuestion.value.type === 'info')) {
+    revealQuizNext("Lanjut →");
+  }
   if (currentQuestion.value && !currentQuestion.value.html) {
     nextTick(() => {
       const trueBtn = document.querySelector('.choice-btn.true-btn');
@@ -882,6 +964,13 @@ const registerTypedWrongAttempt = (question, answerValue = "") => {
     if (question?.qid) {
       markQuestionFailed(question.qid);
     }
+    debugLearningEvent(`Quiz di tab ${currentStep.value} sudah 3 kali salah`, {
+      status: 'quiz_3_kesempatan_salah',
+      ...getQuizDebugInfo(),
+      qid: question?.qid || null,
+      attempts,
+      jawaban: answerValue
+    });
     quizState.value.choicesDisabled = true;
     quizState.value.quizFeedbackType = "wrong";
     quizState.value.quizFeedback = "<strong>Sudah 3 kali mencoba.</strong><br>Kamu boleh lanjut dulu. Perhatikan lagi videonya sebelum masuk ke bagian berikutnya, ya.";
@@ -898,8 +987,9 @@ const handleStandardAnswer = (answer) => {
   if (quizState.value.choicesDisabled) return;
 
   const expectedAnswer = item.answer ?? item.correct;
-  const normalizedAnswer = typeof answer === "string" ? answer.trim().toLowerCase() : answer;
-  const normalizedExpected = typeof expectedAnswer === "string" ? expectedAnswer.trim().toLowerCase() : expectedAnswer;
+  const normalizeAnswerValue = (value) => String(value).trim().toLowerCase();
+  const normalizedAnswer = normalizeAnswerValue(answer);
+  const normalizedExpected = normalizeAnswerValue(expectedAnswer);
   const isCorrect = normalizedAnswer === normalizedExpected;
   
   quizState.value.selectedChoice = answer;
@@ -924,24 +1014,29 @@ const handleStandardAnswer = (answer) => {
       studentProgress.value[ansKey] = String(answer);
       saveProgress(ansKey, studentProgress.value[ansKey]);
     }
+    debugLearningEvent(`Jawaban quiz di tab ${currentStep.value} benar`, {
+      status: 'quiz_jawaban_benar',
+      ...getQuizDebugInfo(),
+      qid: item.qid || null,
+      attempts,
+      jawaban: answer,
+      kunciJawaban: expectedAnswer
+    });
     revealQuizNext();
   } else {
     quizState.value.quizFeedbackType = 'wrong';
-    if (attempts >= 3) {
-      quizState.value.choicesDisabled = true;
-      if (item.qid) {
-        markQuestionFailed(item.qid);
-      }
-      quizState.value.quizFeedback = "<strong>Sudah 3 kali mencoba.</strong><br>Kamu boleh lanjut dulu. Perhatikan lagi videonya sebelum masuk ke bagian berikutnya, ya.";
-      revealQuizNext("Lanjut →");
-    } else {
-      quizState.value.quizFeedback = `Belum tepat. Coba cek lagi perlahan dan perhatikan petunjuk dari video. (Percobaan ${attempts}/3)`;
-      setTimeout(() => {
-        if (!quizState.value.choicesDisabled) {
-          quizState.value.selectedChoice = null;
-        }
-      }, 2000);
-    }
+    quizState.value.choicesDisabled = true;
+    quizState.value.quizFeedback = `Belum tepat. ${(item.explanation || "Silakan coba lagi.")}`;
+    markQuestionFailed(item.qid);
+    debugLearningEvent(`Jawaban quiz di tab ${currentStep.value} salah`, {
+      status: 'quiz_jawaban_salah',
+      ...getQuizDebugInfo(),
+      qid: item.qid || null,
+      attempts,
+      jawaban: answer,
+      kunciJawaban: expectedAnswer
+    });
+    revealQuizNext("Lanjut →");
   }
 };
 
@@ -971,10 +1066,25 @@ const submitInputAnswer = () => {
     if (item.qid) {
       saveProgress(`${item.qid}_Ans`, input);
     }
+    debugLearningEvent(`Jawaban input quiz di tab ${currentStep.value} benar`, {
+      status: 'quiz_input_benar',
+      ...getQuizDebugInfo(),
+      qid: item.qid || null,
+      jawaban: input
+    });
     quizState.value.choicesDisabled = true;
     revealQuizNext();
   } else {
     const isLimitReached = registerTypedWrongAttempt(item, input);
+    const attemptKey = item.qid || item.title || item.question || "typed-question";
+    const attempts = failedAttempts.value[attemptKey] || 1;
+    debugLearningEvent(`Jawaban input quiz di tab ${currentStep.value} salah`, {
+      status: isLimitReached ? 'quiz_input_3_kesempatan_salah' : 'quiz_input_salah',
+      ...getQuizDebugInfo(),
+      qid: item.qid || null,
+      attempts,
+      jawaban: input
+    });
     if (isLimitReached) revealQuizNext("Lanjut →");
   }
 };
@@ -1014,9 +1124,24 @@ const submitEssayAnswer = () => {
     if (item.qid) {
       saveProgress(`${item.qid}_Ans`, input);
     }
+    debugLearningEvent(`Jawaban essay quiz di tab ${currentStep.value} benar`, {
+      status: 'quiz_essay_benar',
+      ...getQuizDebugInfo(),
+      qid: item.qid || null,
+      panjangJawaban: input.length
+    });
     revealQuizNext("Selesai!");
   } else {
     const isLimitReached = registerTypedWrongAttempt(item, input);
+    const attemptKey = item.qid || item.title || item.question || "typed-question";
+    const attempts = failedAttempts.value[attemptKey] || 1;
+    debugLearningEvent(`Jawaban essay quiz di tab ${currentStep.value} salah`, {
+      status: isLimitReached ? 'quiz_essay_3_kesempatan_salah' : 'quiz_essay_salah',
+      ...getQuizDebugInfo(),
+      qid: item.qid || null,
+      attempts,
+      panjangJawaban: input.length
+    });
     if (isLimitReached) revealQuizNext("Lanjut →");
   }
 };
@@ -1190,17 +1315,13 @@ const exposeGlobalMethods = () => {
       feedback.innerHTML = `❌ <strong>SALAH!</strong><br>${explanation}`;
       feedback.style.backgroundColor = "#ff5c8a";
       feedback.style.color = "white";
-      const attempts = qid ? studentProgress.value[`${qid}_Att`] || 1 : 1;
-      if (attempts >= 3) {
-        markQuestionFailed(qid);
-        feedback.innerHTML += `<br><strong>Sudah 3 kali mencoba.</strong> Kamu boleh lanjut dulu. Perhatikan lagi videonya sebelum masuk ke bagian berikutnya, ya.`;
-        revealQuizNext("Lanjut →");
-      } else {
-        buttons.forEach(b => {
-          b.disabled = false;
-          b.style.opacity = '1';
-        });
-      }
+      
+      buttons.forEach(b => {
+        b.disabled = false;
+        b.style.opacity = '1';
+      });
+      markQuestionFailed(qid);
+      revealQuizNext("Lanjut →");
     }
   };
 
@@ -1680,6 +1801,12 @@ onMounted(() => {
 });
 
 watch(currentStep, (newStep) => {
+  debugLearningEvent(`Tab ${newStep} dibuka`, {
+    status: 'tab_dibuka',
+    tab: Number(newStep),
+    title: courseData[newStep]?.title || ''
+  });
+
   Object.keys(players).forEach(id => {
     if (Number(id) !== newStep && players[id] && typeof players[id].pauseVideo === 'function') {
       players[id].pauseVideo();
